@@ -43,8 +43,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
-    // Default to demo mode if firebase is not configured
-    return !isFirebaseConfigured();
+    // Default to demo mode if firebase is not configured or user is not logged in yet
+    return !isFirebaseConfigured() || !auth?.currentUser;
   });
   
   // Current active demo member (defaults to Amit jha - Admin)
@@ -67,6 +67,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setFirebaseUser(user);
       if (user) {
         setIsDemoMode(false);
+      } else {
+        setIsDemoMode(true);
       }
       setLoading(false);
     });

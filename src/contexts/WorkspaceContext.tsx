@@ -12,8 +12,21 @@ import {
   where,
   orderBy,
 } from 'firebase/firestore';
-import { db, isFirebaseConfigured, handleFirestoreError, OperationType } from '../lib/firebase';
+import { db, auth, isFirebaseConfigured, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from './AuthContext';
+
+/**
+ * Strips any undefined fields so Firestore setDoc/updateDoc never throws "Unsupported field value: undefined"
+ */
+function cleanFirestoreData<T extends Record<string, any>>(obj: T): Record<string, any> {
+  const result: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      result[key] = value;
+    }
+  }
+  return result;
+}
 import {
   DEMO_WORKSPACE,
   DEMO_MEMBERS,
@@ -109,6 +122,9 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [loading, setLoading] = useState<boolean>(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
+  // Live Firestore is only used if Firestore is configured AND user is authenticated on Firebase Auth
+  const isLiveFirestore = !isDemoMode && isFirebaseConfigured() && Boolean(db) && Boolean(auth?.currentUser);
+
   // Sync demo changes to localStorage
   useEffect(() => {
     if (isDemoMode) {
@@ -120,7 +136,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   // Firestore synchronization if in live Firebase mode
   useEffect(() => {
-    if (isDemoMode || !isFirebaseConfigured() || !db || !currentUser) {
+    if (!isLiveFirestore || !db) {
       return;
     }
 
@@ -205,7 +221,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       unsubMembers();
       unsubActivity();
     };
-  }, [isDemoMode, currentUser, workspace.id]);
+  }, [isLiveFirestore, workspace.id]);
 
   // Record an activity audit item
   const recordActivity = useCallback(
@@ -230,7 +246,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         createdAt: new Date().toISOString(),
       };
 
-      if (isDemoMode || !isFirebaseConfigured() || !db) {
+      if (!isLiveFirestore || !db) {
         setActivities((prev) => [newActivity, ...prev]);
         return;
       }
@@ -275,12 +291,12 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       ...data,
       id,
       workspaceId: workspace.id,
-      createdBy: currentUser?.uid || 'user-unknown',
+      createdBy: currentUser?.uid || auth?.currentUser?.uid || 'user-unknown',
       createdAt: now,
       updatedAt: now,
     };
 
-    if (isDemoMode || !isFirebaseConfigured() || !db) {
+    if (!isLiveFirestore || !db) {
       setTasks((prev) => [newTask, ...prev]);
       await recordActivity('created', 'task', id, newTask.title, `Created in category ${newTask.category || 'General'}`);
       return id;
@@ -288,11 +304,12 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     const taskPath = `workspaces/${workspace.id}/tasks/${id}`;
     try {
-      await setDoc(doc(db, taskPath), {
+      const payload = cleanFirestoreData({
         ...newTask,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+      await setDoc(doc(db, taskPath), payload);
       await recordActivity('created', 'task', id, newTask.title, 'Created in Firestore');
       return id;
     } catch (err) {
@@ -320,7 +337,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       updatedAt: now,
     };
 
-    if (isDemoMode || !isFirebaseConfigured() || !db) {
+    if (!isLiveFirestore || !db) {
       setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
       await recordActivity('updated', 'task', taskId, updated.title, 'Updated task details');
       return;
@@ -328,11 +345,12 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     const taskPath = `workspaces/${workspace.id}/tasks/${taskId}`;
     try {
-      await updateDoc(doc(db, taskPath), {
+      const payload = cleanFirestoreData({
         ...data,
         completedAt: completedAtUpdate || null,
         updatedAt: serverTimestamp(),
       });
+      await updateDoc(doc(db, taskPath), payload);
       await recordActivity('updated', 'task', taskId, updated.title, 'Updated in Firestore');
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, taskPath);
@@ -346,7 +364,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const now = new Date().toISOString();
     const isNowCompleted = newStatus === 'Completed';
 
-    if (isDemoMode || !isFirebaseConfigured() || !db) {
+    if (!isLiveFirestore || !db) {
       setTasks((prev) =>
         prev.map((t) =>
           t.id === taskId
@@ -392,7 +410,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const existingTask = tasks.find((t) => t.id === taskId);
     const title = existingTask?.title || 'Task';
 
-    if (isDemoMode || !isFirebaseConfigured() || !db) {
+    if (!isLiveFirestore || !db) {
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
       if (selectedTaskId === taskId) setSelectedTaskId(null);
       await recordActivity('deleted', 'task', taskId, title, 'Removed from workspace');
@@ -417,12 +435,12 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       ...data,
       id,
       workspaceId: workspace.id,
-      createdBy: currentUser?.uid || 'user-unknown',
+      createdBy: currentUser?.uid || auth?.currentUser?.uid || 'user-unknown',
       createdAt: now,
       updatedAt: now,
     };
 
-    if (isDemoMode || !isFirebaseConfigured() || !db) {
+    if (!isLiveFirestore || !db) {
       setProjects((prev) => [newProject, ...prev]);
       await recordActivity('created', 'project', id, newProject.name, `New ${newProject.category}`);
       return id;
@@ -430,11 +448,12 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     const projectPath = `workspaces/${workspace.id}/projects/${id}`;
     try {
-      await setDoc(doc(db, projectPath), {
+      const payload = cleanFirestoreData({
         ...newProject,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+      await setDoc(doc(db, projectPath), payload);
       await recordActivity('created', 'project', id, newProject.name, 'Created project in Firestore');
       return id;
     } catch (err) {
@@ -449,7 +468,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const now = new Date().toISOString();
     const updated = { ...existing, ...data, updatedAt: now };
 
-    if (isDemoMode || !isFirebaseConfigured() || !db) {
+    if (!isLiveFirestore || !db) {
       setProjects((prev) => prev.map((p) => (p.id === projectId ? updated : p)));
       await recordActivity('updated', 'project', projectId, updated.name, 'Updated project');
       return;
@@ -457,10 +476,11 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     const projectPath = `workspaces/${workspace.id}/projects/${projectId}`;
     try {
-      await updateDoc(doc(db, projectPath), {
+      const payload = cleanFirestoreData({
         ...data,
         updatedAt: serverTimestamp(),
       });
+      await updateDoc(doc(db, projectPath), payload);
       await recordActivity('updated', 'project', projectId, updated.name, 'Updated project in Firestore');
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, projectPath);
@@ -471,7 +491,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const existing = projects.find((p) => p.id === projectId);
     const name = existing?.name || 'Project';
 
-    if (isDemoMode || !isFirebaseConfigured() || !db) {
+    if (!isLiveFirestore || !db) {
       setProjects((prev) => prev.filter((p) => p.id !== projectId));
       // Disassociate project from existing tasks
       setTasks((prev) => prev.map((t) => (t.projectId === projectId ? { ...t, projectId: undefined } : t)));
@@ -497,7 +517,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const newComment: TaskComment = {
       id,
       taskId,
-      authorId: currentUser?.uid || 'user-unknown',
+      authorId: currentUser?.uid || auth?.currentUser?.uid || 'user-unknown',
       authorName: currentUser?.displayName || 'Team Member',
       authorRole: currentRole,
       content: trimmed,
@@ -512,13 +532,14 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const task = tasks.find((t) => t.id === taskId);
     await recordActivity('commented', 'task', taskId, task?.title || 'Task', `Comment: "${trimmed.substring(0, 60)}..."`);
 
-    if (!isDemoMode && isFirebaseConfigured() && db) {
+    if (isLiveFirestore && db) {
       const commentPath = `workspaces/${workspace.id}/tasks/${taskId}/comments/${id}`;
       try {
-        await setDoc(doc(db, commentPath), {
+        const payload = cleanFirestoreData({
           ...newComment,
           createdAt: serverTimestamp(),
         });
+        await setDoc(doc(db, commentPath), payload);
       } catch (err) {
         handleFirestoreError(err, OperationType.CREATE, commentPath);
       }
@@ -531,7 +552,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       throw new Error('Only Workspace Admins can modify member roles.');
     }
 
-    if (isDemoMode || !isFirebaseConfigured() || !db) {
+    if (!isLiveFirestore || !db) {
       setMembers((prev) => prev.map((m) => (m.uid === uid ? { ...m, role: newRole } : m)));
       const member = members.find((m) => m.uid === uid);
       await recordActivity('updated', 'member', uid, member?.displayName || 'Member', `Role updated to ${newRole}`);
@@ -564,7 +585,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       joinedAt: new Date().toISOString(),
     };
 
-    if (isDemoMode || !isFirebaseConfigured() || !db) {
+    if (!isLiveFirestore || !db) {
       setMembers((prev) => [...prev, newMember]);
       await recordActivity('created', 'member', newMember.uid, newMember.displayName, `Added to team as ${role}`);
       return;
@@ -572,7 +593,8 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     const memberPath = `workspaces/${workspace.id}/members/${newMember.uid}`;
     try {
-      await setDoc(doc(db, memberPath), newMember);
+      const payload = cleanFirestoreData(newMember);
+      await setDoc(doc(db, memberPath), payload);
       await recordActivity('created', 'member', newMember.uid, newMember.displayName, `Added to team as ${role}`);
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, memberPath);

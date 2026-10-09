@@ -37,6 +37,7 @@ const envProjectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
 const envStorageBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET;
 const envMessagingSenderId = import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID;
 const envAppId = import.meta.env.VITE_FIREBASE_APP_ID;
+const envDatabaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID;
 
 const hasAppletConfig = Boolean(appletConfig?.apiKey && appletConfig?.projectId);
 
@@ -70,7 +71,11 @@ if (hasFirebaseEnv) {
       appInstance = getApps()[0];
     }
     authInstance = getAuth(appInstance);
-    dbInstance = getFirestore(appInstance);
+    const firestoreDbId =
+      ((appletConfig as Record<string, unknown>)?.firestoreDatabaseId as string | undefined) ||
+      envDatabaseId ||
+      'ai-studio-taskmanagr-e9828365-d36c-40f1-885c-9efdec06c5ee';
+    dbInstance = firestoreDbId ? getFirestore(appInstance, firestoreDbId) : getFirestore(appInstance);
   } catch (err) {
     console.warn('Firebase initialization warning:', err);
   }
