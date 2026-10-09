@@ -3,6 +3,7 @@
   "appId": "1:609292198658:web:ff17677b2d93d8901c581b",
   "apiKey": "AIzaSyC-7Ib_PnRG9q3zBhkPQy3MnIQtCpKwLeg",
   "authDomain": "arctic-verbena-gmln4.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-taskmanagr-e9828365-d36c-40f1-885c-9efdec06c5ee",
   "storageBucket": "arctic-verbena-gmln4.firebasestorage.app",
   "messagingSenderId": "609292198658",
   "measurementId": "",

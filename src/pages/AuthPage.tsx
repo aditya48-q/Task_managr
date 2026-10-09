@@ -4,10 +4,9 @@ import { Mail, Lock, User, ArrowRight, AlertCircle, CheckCircle2, Shield, Sparkl
 import { Logo } from '../components/common/Logo';
 import { useAuth } from '../contexts/AuthContext';
 import { GoogleSignInButton } from '../components/common/GoogleSignInButton';
-import { connectGoogleCalendar } from '../lib/google-calendar';
 
 export const AuthPage: React.FC = () => {
-  const { loginWithEmail, registerWithEmail, resetPassword, setDemoMode, isFirebaseConnected } = useAuth();
+  const { loginWithGoogle, loginWithEmail, registerWithEmail, resetPassword, setDemoMode, isFirebaseConnected } = useAuth();
   const navigate = useNavigate();
 
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
@@ -23,7 +22,7 @@ export const AuthPage: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      await connectGoogleCalendar();
+      await loginWithGoogle();
       navigate('/');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Google Sign-In failed.');

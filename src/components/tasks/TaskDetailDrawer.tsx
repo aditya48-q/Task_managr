@@ -11,18 +11,11 @@ import {
   AlertTriangle,
   FolderGit2,
   CheckCircle2,
-  CalendarPlus,
-  ExternalLink,
 } from 'lucide-react';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { StatusBadge, PriorityBadge } from '../common/Badge';
 import { formatFriendlyDate, formatRelativeTime, isTaskOverdue } from '../../lib/date-utils';
-import {
-  syncTaskToGoogleCalendar,
-  isCalendarConnected,
-  connectGoogleCalendar,
-} from '../../lib/google-calendar';
 import type { TaskStatus, TaskPriority } from '../../types';
 
 interface TaskDetailDrawerProps {
@@ -42,8 +35,6 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
   const [commentText, setCommentText] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
-  const [syncingGCal, setSyncingGCal] = useState(false);
-  const [gcalSuccessLink, setGcalSuccessLink] = useState<string | null>(null);
 
   if (!taskId) return null;
 
@@ -183,46 +174,6 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                 </div>
               )}
             </div>
-
-            {/* Google Calendar Sync Action */}
-            {task.dueDate && (
-              <div className="col-span-2 pt-2 border-t border-slate-200/60 flex items-center justify-between">
-                <span className="text-slate-500">Google Calendar</span>
-                {gcalSuccessLink ? (
-                  <a
-                    href={gcalSuccessLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline flex items-center gap-1 font-semibold"
-                  >
-                    <span>View in Calendar</span>
-                    <ExternalLink size={11} />
-                  </a>
-                ) : (
-                  <button
-                    onClick={async () => {
-                      setSyncingGCal(true);
-                      try {
-                        if (!isCalendarConnected()) {
-                          await connectGoogleCalendar();
-                        }
-                        const ev = await syncTaskToGoogleCalendar(task, project?.name);
-                        setGcalSuccessLink(ev.htmlLink || 'https://calendar.google.com');
-                      } catch (err: unknown) {
-                        alert(err instanceof Error ? err.message : 'Could not sync to Google Calendar');
-                      } finally {
-                        setSyncingGCal(false);
-                      }
-                    }}
-                    disabled={syncingGCal}
-                    className="text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 disabled:opacity-50"
-                  >
-                    <CalendarPlus size={13} />
-                    <span>{syncingGCal ? 'Exporting...' : 'Add to Google Calendar'}</span>
-                  </button>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Description */}

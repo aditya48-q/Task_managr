@@ -3,6 +3,8 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
   signOut,
   sendPasswordResetEmail,
   updateProfile,
@@ -25,6 +27,7 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   clearError: () => void;
+  loginWithGoogle: () => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
   registerWithEmail: (name: string, email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -72,6 +75,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [isFirebaseConnected]);
 
   const clearError = () => setError(null);
+
+  const loginWithGoogle = async () => {
+    setError(null);
+    if (!isFirebaseConnected || !auth) {
+      setSelectedDemoUid(DEMO_MEMBERS[0].uid);
+      setIsDemoMode(true);
+      return;
+    }
+
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      setIsDemoMode(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Google sign-in failed.';
+      setError(msg);
+      throw err;
+    }
+  };
 
   const loginWithEmail = async (email: string, pass: string) => {
     setError(null);
@@ -196,6 +218,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         error,
         clearError,
+        loginWithGoogle,
         loginWithEmail,
         registerWithEmail,
         logout,
