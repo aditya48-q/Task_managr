@@ -1,0 +1,6 @@
+{
+  "name": "GDGoC Task Manager",
+  "description": "Collaborative task and event workspace specifically designed for Google Developer Groups on Campus (GDGoC) organizing teams.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

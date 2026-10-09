@@ -1,0 +1,174 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with display name, email, avatar, and system role.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "avatarUrl": { "type": "string", "maxLength": 500 },
+        "bio": { "type": "string", "maxLength": 300 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "displayName"]
+    },
+    "Workspace": {
+      "title": "Workspace",
+      "description": "GDGoC chapter workspace.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 120 },
+        "chapterName": { "type": "string", "maxLength": 120 },
+        "institution": { "type": "string", "maxLength": 150 },
+        "description": { "type": "string", "maxLength": 500 },
+        "ownerId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "ownerId"]
+    },
+    "Member": {
+      "title": "Member",
+      "description": "Workspace member record with GDGoC role (Admin, Lead, Member).",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "workspaceId": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "role": { "type": "string", "enum": ["Admin", "Lead", "Member"] },
+        "teamTrack": { "type": "string", "maxLength": 60 },
+        "status": { "type": "string", "enum": ["active", "invited", "inactive"] },
+        "joinedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "workspaceId", "email", "displayName", "role", "status"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A GDGoC project or event, such as a Hackathon, Workshop, or Study Jam.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "workspaceId": { "type": "string" },
+        "name": { "type": "string", "maxLength": 150 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "category": { "type": "string", "enum": ["Hackathon", "Workshop", "Study Jam", "Tech Talk", "Campaign", "Internal"] },
+        "status": { "type": "string", "enum": ["planning", "active", "completed", "archived"] },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "leadIds": { "type": "array" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "workspaceId", "name", "category", "status", "createdBy"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A GDGoC operational task.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "workspaceId": { "type": "string" },
+        "projectId": { "type": "string" },
+        "title": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 3000 },
+        "status": { "type": "string", "enum": ["To Do", "In Progress", "In Review", "Completed"] },
+        "priority": { "type": "string", "enum": ["Low", "Medium", "High", "Urgent"] },
+        "category": { "type": "string", "maxLength": 50 },
+        "assigneeIds": { "type": "array" },
+        "dueDate": { "type": "string" },
+        "completedAt": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "workspaceId", "title", "status", "priority", "createdBy"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "Discussion comments and progress notes on a task.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "taskId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string", "maxLength": 100 },
+        "content": { "type": "string", "maxLength": 2000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "taskId", "authorId", "authorName", "content", "createdAt"]
+    },
+    "Activity": {
+      "title": "Activity",
+      "description": "Audit trail log of changes and actions taken in the workspace.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "workspaceId": { "type": "string" },
+        "actorId": { "type": "string" },
+        "actorName": { "type": "string" },
+        "action": { "type": "string", "maxLength": 100 },
+        "targetType": { "type": "string", "enum": ["task", "project", "member", "workspace"] },
+        "targetId": { "type": "string" },
+        "targetTitle": { "type": "string", "maxLength": 200 },
+        "details": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "workspaceId", "actorId", "actorName", "action", "targetType", "targetId", "createdAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "In-app notifications for task assignments, mentions, and updates.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string", "maxLength": 150 },
+        "message": { "type": "string", "maxLength": 300 },
+        "link": { "type": "string", "maxLength": 200 },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "title", "message", "read", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profile document."
+    },
+    "/workspaces/{workspaceId}": {
+      "schema": { "$ref": "#/entities/Workspace" },
+      "description": "GDGoC chapter workspace."
+    },
+    "/workspaces/{workspaceId}/members/{uid}": {
+      "schema": { "$ref": "#/entities/Member" },
+      "description": "Workspace membership and role records."
+    },
+    "/workspaces/{workspaceId}/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Events and projects under the workspace."
+    },
+    "/workspaces/{workspaceId}/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "Tasks associated with the workspace and projects."
+    },
+    "/workspaces/{workspaceId}/tasks/{taskId}/comments/{commentId}": {
+      "schema": { "$ref": "#/entities/Comment" },
+      "description": "Comments and updates on individual tasks."
+    },
+    "/workspaces/{workspaceId}/activity/{activityId}": {
+      "schema": { "$ref": "#/entities/Activity" },
+      "description": "Audit trail log of actions in the workspace."
+    },
+    "/users/{uid}/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "User in-app notifications."
+    }
+  }
+}
